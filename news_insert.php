@@ -4,6 +4,7 @@ include "connection.php";
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $title = $_POST["title"];
+    $category = $_POST["category"];
     $content = $_POST["content"];
     $author = $_POST["author"];
     $publication_date = date("Y-m-d H:i:s"); // Current date and time
@@ -11,9 +12,18 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     //convert user added newline to html br tag. Helps in formatting user data
     $content = nl2br($content);
 
-    $query = "INSERT INTO news_articles (title, content, author, publication_date) VALUES (?, ?, ?, ?)";
+    //getting category_id from category
+    $category_query = "SELECT id FROM categories where name= ?";
+    $stmt = $conn->prepare($category_query);
+    $stmt->bind_param("s", $category);
+    $stmt->execute();
+    $stmt->bind_result($category_id);
+    $stmt->fetch();
+    $stmt->close();
+
+    $query = "INSERT INTO news_articles (title,category_id , content, author, publication_date) VALUES (?, ?, ?, ?, ?)";
     $stmt = $conn->prepare($query);
-    $stmt->bind_param("ssss", $title, $content, $author, $publication_date);
+    $stmt->bind_param("sisss", $title,$category_id, $content, $author, $publication_date);
 
     if ($stmt->execute()) {
         echo "News article added successfully.";
@@ -28,19 +38,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 $conn->close();
 ?>
 
-<!DOCTYPE html>
-<html lang="en">
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>User Post</title>
-</head>
-
-<body>
-    <a href="news_display.php">
-        <h1>View news</h1>
-    </a>
+<?php
+$page_title = "Add news";
+include "header.php";
+?>
     <h2>Submit your article</h2>
 
     <form action="news_insert.php" method="POST">
@@ -48,6 +49,29 @@ $conn->close();
             <legend>article:</legend>
             Title: <br>
             <input type="text" name="title" required>
+            <br>
+            <?php
+            //make a connection to the database
+            include "connection.php";
+
+            $query = "SELECT name as category_name FROM categories";
+            $stmt = $conn->prepare($query);
+            $stmt->execute();
+            $stmt->bind_result($category_name);
+
+            echo "Category: <br>";
+            echo "<select name='category' id='' required>";
+            echo "<option value='' disabled hidden selected>Choose here</option>";
+            while($stmt->fetch()) {
+                echo "<option value='$category_name'>$category_name</option>";
+            }
+
+            echo "</select><br>";
+            $stmt->close();
+            $conn->close();
+
+            ?>
+
             <br>
 
             Content: <br>
@@ -63,6 +87,7 @@ $conn->close();
 
         </fieldset>
     </form>
-</body>
 
-</html>
+<?php
+include "footer.php";
+?>
